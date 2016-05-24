@@ -4,6 +4,7 @@
  */ 
 
 #include "dyn_core.h"
+#include "dyn_topology.h"
 #include "dyn_dnode_peer.h"
 #include "dyn_mbuf.h"
 #include "dyn_server.h"
@@ -86,7 +87,7 @@ dnode_peer_req_forward(struct context *ctx, struct conn *c_conn,
     }
 
     struct server_pool *pool = c_conn->owner;
-    dmsg_type_t msg_type = (string_compare(&pool->dc, dc) != 0)? DMSG_REQ_FORWARD : DMSG_REQ;
+    dmsg_type_t msg_type = (string_compare(&pool->dc_name, dc) != 0)? DMSG_REQ_FORWARD : DMSG_REQ;
 
     // SMB: THere is some non trivial business happening here. Better refer to the
     // comment in dnode_rsp_send_next to understand the stuff here.
