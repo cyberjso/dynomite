@@ -659,11 +659,11 @@ admin_local_req_forward(struct context *ctx, struct conn *c_conn, struct msg *ms
     ASSERT((c_conn->type == CONN_CLIENT) ||
            (c_conn->type == CONN_DNODE_PEER_CLIENT));
 
-    struct node *peer = dnode_peer_pool_server(ctx, c_conn->owner, rack, key, keylen, msg->msg_type);
-    if (!peer->is_local) {
-        send_rsp_integer(ctx, c_conn, msg);
-        return;
-    }
+     struct node *peer = dnode_peer_pool_server(ctx, c_conn->owner, rack, key, keylen, msg->msg_type);
+     if (!peer->is_local) {
+         send_rsp_integer(ctx, c_conn, msg);
+         return;
+     }
 
     struct conn *p_conn = dnode_peer_pool_server_conn(ctx, peer);
     if (p_conn == NULL) {
