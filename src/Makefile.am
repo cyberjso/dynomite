@@ -42,6 +42,7 @@ dynomite_SOURCES =			                          \
         dyn_dnode_peer.c  dyn_dnode_peer.h                        \
         dyn_dnode_request.c                                       \
         dyn_dnode_proxy.c dyn_dnode_proxy.h                       \
+        dyn_error.c dyn_error.h									  \
         dyn_histogram.c dyn_histogram.h                           \
         dyn_server.c dyn_server.h		                  \
         dyn_proxy.c dyn_proxy.h		                          \
@@ -88,6 +89,7 @@ dynomite_test_SOURCES =                                           \
         dyn_dnode_peer.c  dyn_dnode_peer.h                        \
         dyn_dnode_request.c                                       \
         dyn_dnode_proxy.c dyn_dnode_proxy.h                       \
+        dyn_error.c dyn_error.h									  \
         dyn_histogram.c dyn_histogram.h                           \
         dyn_server.c dyn_server.h                                 \
         dyn_proxy.c dyn_proxy.h                                   \
