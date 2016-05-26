@@ -163,9 +163,6 @@ conf_datastore_transform(struct datastore *s, struct conf_server *cs)
     s->endpoint.addrlen = cs->info.addrlen;
     s->endpoint.addr = (struct sockaddr *)&cs->info.addr;
 
-    s->ns_conn_q = 0;
-    TAILQ_INIT(&s->s_conn_q);
-
     s->next_retry_us = 0ULL;
     s->reconnect_backoff_sec = 1LL;
     s->failure_count = 0;
