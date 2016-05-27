@@ -372,6 +372,7 @@ static rstatus_t
 conf_topo_transform(struct topology *topo, struct conf_pool *cp)
 {
     string_duplicate(&topo->seed_provider, &cp->dyn_seed_provider);
+    return DN_OK;
 }
 
 rstatus_t
@@ -450,8 +451,6 @@ conf_pool_transform(struct server_pool *sp, struct conf_pool *cp)
     sp->recon_key_file = cp->recon_key_file;
     sp->recon_iv_file = cp->recon_iv_file;
 
-    array_null(&sp->seeds);
-    array_null(&sp->peers);
     sp->conf_pool = cp;
 
     /* gossip */
