@@ -142,6 +142,19 @@
  * So generally request->selected_rsp & response->peer is valid. Eventually it
  * will be good to have different structures for request and response.
  */
+
+char *msg_category_name[] = {
+    "REQ_CLIENT",
+    "REQ_LOCAL_PEER",
+    "REQ_REMOTE_PEER",
+    "RSP_SERVER",
+    "RSP_LOCAL_PEER",
+    "RSP_REMOTE_PEER",
+    "RSP_ERROR",
+    "MSG_MISC",
+    "MSG_CATEGORY_MAX"
+};
+
 static uint64_t msg_id;          /* message id counter */
 static uint64_t frag_id;         /* fragment id counter */
 static size_t nfree_msgq;        /* # free msg q */
@@ -153,6 +166,7 @@ func_msg_post_splitcopy_t g_post_splitcopy;  /* message post-split copy */
 func_msg_coalesce_t  g_pre_coalesce;    /* message pre-coalesce */
 func_msg_coalesce_t  g_post_coalesce;   /* message post-coalesce */
 func_msg_get_key     g_msg_get_key;     /* message get key for the msg */
+static uint64_t msg_cat_counters[MSG_CATEGORY_MAX] = {0};
 
 static uint8_t *
 msg_get_key(struct msg *msg, struct string *hash_tag, uint32_t *keylen)
@@ -210,7 +224,7 @@ msg_cant_handle_response(struct msg *req, struct msg *rsp)
 static size_t alloc_msg_count = 0;
 
 static struct msg *
-_msg_get(struct conn *conn, const char *const caller)
+_msg_get(struct conn *conn, const char *const caller, msg_category_t category)
 {
     struct msg *msg;
 
@@ -222,6 +236,7 @@ _msg_get(struct conn *conn, const char *const caller)
         msg = TAILQ_FIRST(&free_msgq);
         nfree_msgq--;
         TAILQ_REMOVE(&free_msgq, msg, m_tqe);
+        msg_cat_counters[category]++;
         ret = pthread_spin_unlock(&lock);
         ASSERT_LOG(!ret, "Failed to unlock spin lock. err:%d error: %s", ret, strerror(ret));
         goto done;
@@ -237,14 +252,19 @@ _msg_get(struct conn *conn, const char *const caller)
     }
 
     alloc_msg_count++;
+    msg_cat_counters[category]++;
     ret = pthread_spin_unlock(&lock);
     ASSERT_LOG(!ret, "Failed to unlock spin lock. err:%d error: %s", ret, strerror(ret));
 
 
-    if (alloc_msg_count % 1000 == 0)
+    if (alloc_msg_count % 10000 == 0) {
         log_warn("alloc_msg_count: %lu caller: %s conn: %s sd: %d",
                  alloc_msg_count, caller, conn_get_type_string(conn), conn->p.sd);
-    else
+        int i = 0;
+        for (; i< MSG_CATEGORY_MAX; i++) {
+            log_warn("%s %lu", msg_category_name[i], msg_cat_counters[i]);
+        }
+    } else
         log_info("alloc_msg_count: %lu caller: %s conn: %s sd: %d",
                  alloc_msg_count, caller, conn_get_type_string(conn), conn->p.sd);
  
@@ -335,17 +355,19 @@ size_t msg_free_queue_size(void)
 }
 
 struct msg *
-msg_get(struct conn *conn, bool request, const char * const caller)
+msg_get(struct conn *conn, bool request, const char * const caller,
+        msg_category_t category)
 {
     struct msg *msg;
 
-    msg = _msg_get(conn, caller);
+    msg = _msg_get(conn, caller, category);
     if (msg == NULL) {
         return NULL;
     }
 
     msg->owner = conn;
     msg->request = request ? 1 : 0;
+    msg->category = category;
 
     if (g_data_store == DATA_REDIS) {
         if (request) {
@@ -440,7 +462,7 @@ msg_get_error(struct conn *conn, dyn_error_t dyn_err, err_t err)
     char *protstr = g_data_store == DATA_REDIS ? "-ERR" : "SERVER_ERROR";
     char *source = dyn_error_source(dyn_err);
 
-    msg = _msg_get(conn, __FUNCTION__);
+    msg = _msg_get(conn, __FUNCTION__, RSP_ERROR);
     if (msg == NULL) {
         return NULL;
     }
@@ -475,7 +497,7 @@ msg_get_rsp_integer(struct conn *conn)
     struct mbuf *mbuf;
     int n;
 
-    msg = _msg_get(conn, __FUNCTION__);
+    msg = _msg_get(conn, __FUNCTION__, RSP_ERROR);
     if (msg == NULL) {
         return NULL;
     }
@@ -520,7 +542,6 @@ msg_put(struct msg *msg)
    	    log_debug(LOG_ERR, "Unable to put a null msg - probably due to memory hard-set limit");
    	    return;
     }
-
     if (msg->request && msg->awaiting_rsps != 0) {
         log_error("Not freeing req %d, awaiting_rsps = %u",
                   msg->id, msg->awaiting_rsps);
@@ -544,6 +565,7 @@ msg_put(struct msg *msg)
     ASSERT_LOG(!ret, "Failed to lock spin lock. err:%d error: %s", ret, strerror(ret));
     nfree_msgq++;
     TAILQ_INSERT_HEAD(&free_msgq, msg, m_tqe);
+    msg_cat_counters[msg->category]--;
     ret = pthread_spin_unlock(&lock);
     ASSERT_LOG(!ret, "Failed to unlock spin lock. err:%d error: %s", ret, strerror(ret));
 }
@@ -605,6 +627,7 @@ msg_dump(struct msg *msg)
 void
 msg_init(struct instance *nci)
 {
+    int i = 0;
     log_debug(LOG_DEBUG, "msg size %d", sizeof(struct msg));
     msg_id = 0;
     frag_id = 0;
@@ -612,6 +635,8 @@ msg_init(struct instance *nci)
     alloc_msgs_max = nci->alloc_msgs_max;
     int ret = pthread_spin_init(&lock, PTHREAD_PROCESS_PRIVATE);
     ASSERT_LOG(!ret, "Failed to init spin lock. err:%d error: %s", ret, strerror(ret));
+    for (i = 0; i < MSG_CATEGORY_MAX; i++)
+        msg_cat_counters[i] = 0;
     TAILQ_INIT(&free_msgq);
 }
 
@@ -697,7 +722,23 @@ msg_parsed(struct context *ctx, struct conn *conn, struct msg *msg)
         return DN_ENOMEM;
     }
 
-    nmsg = msg_get(msg->owner, msg->request, __FUNCTION__);
+    msg_category_t category = MSG_MISC;
+    if (conn->p.type == CONN_CLIENT)
+        category = REQ_CLIENT;
+    if (conn->p.type == CONN_SERVER)
+        category = RSP_SERVER;
+    if (conn->p.type == CONN_DNODE_PEER_CLIENT) {
+        category = REQ_LOCAL_PEER;
+        if (!conn->same_dc)
+            category = REQ_REMOTE_PEER;
+    }
+    if (conn->p.type == CONN_DNODE_PEER_SERVER) {
+        category = RSP_LOCAL_PEER;
+        if (!conn->same_dc)
+            category = RSP_REMOTE_PEER;
+    }
+
+    nmsg = msg_get(msg->owner, msg->request, __FUNCTION__, category);
     if (nmsg == NULL) {
         mbuf_put(nbuf);
         return DN_ENOMEM;
@@ -736,7 +777,7 @@ msg_fragment(struct context *ctx, struct conn *conn, struct msg *msg)
         return status;
     }
 
-    nmsg = msg_get(msg->owner, msg->request, __FUNCTION__);
+    nmsg = msg_get(msg->owner, msg->request, __FUNCTION__, MSG_MISC);
     if (nmsg == NULL) {
         mbuf_put(nbuf);
         return DN_ENOMEM;

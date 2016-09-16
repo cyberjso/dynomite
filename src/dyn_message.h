@@ -210,6 +210,19 @@ typedef enum msg_type {
     MSG_SENTINEL
 } msg_type_t;
 
+typedef enum dyn_msg_catergory {
+    REQ_CLIENT,
+    REQ_LOCAL_PEER,
+    REQ_REMOTE_PEER,
+    RSP_SERVER,
+    RSP_LOCAL_PEER,
+    RSP_REMOTE_PEER,
+    RSP_ERROR,
+    MSG_MISC,
+    MSG_CATEGORY_MAX
+}msg_category_t;
+
+extern char *msg_category_name[];
 
 typedef enum dyn_error {
     UNKNOWN_ERROR,
@@ -312,6 +325,7 @@ struct msg {
 
 
     msg_type_t           type;            /* message type */
+    msg_category_t       category;
 
     uint8_t              *key_start;      /* key start */
     uint8_t              *key_end;        /* key end */
@@ -394,7 +408,8 @@ size_t msg_free_queue_size(void);
 void msg_init(struct instance *nci);
 rstatus_t msg_clone(struct msg *src, struct mbuf *mbuf_start, struct msg *target);
 void msg_deinit(void);
-struct msg *msg_get(struct conn *conn, bool request, const char* const caller);
+struct msg *msg_get(struct conn *conn, bool request, const char* const caller,
+                    msg_category_t category);
 void msg_put(struct msg *msg);
 uint32_t msg_mbuf_size(struct msg *msg);
 uint32_t msg_length(struct msg *msg);

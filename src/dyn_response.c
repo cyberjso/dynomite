@@ -32,7 +32,13 @@ rsp_get(struct conn *conn)
     ASSERT((conn->p.type == CONN_DNODE_PEER_SERVER) ||
            (conn->p.type == CONN_SERVER));
 
-    msg = msg_get(conn, false, __FUNCTION__);
+    msg_category_t category = RSP_SERVER;
+    if (conn->p.type ==  CONN_DNODE_PEER_SERVER) {
+        category = RSP_LOCAL_PEER;
+        if (!conn->same_dc)
+            category = RSP_REMOTE_PEER;
+    }
+    msg = msg_get(conn, false, __FUNCTION__, category);
     if (msg == NULL) {
         conn->err = errno;
     }

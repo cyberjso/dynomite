@@ -139,7 +139,7 @@ rspmgr_get_response(struct response_mgr *rspmgr)
         return rspmgr->responses[0];
     } else {
         log_info("none of the responses match, returning error");
-        struct msg *rsp = msg_get(rspmgr->conn, false, __FUNCTION__);
+        struct msg *rsp = msg_get(rspmgr->conn, false, __FUNCTION__, RSP_ERROR);
         rsp->error = 1;
         rsp->err = NO_QUORUM_ACHIEVED;
         rsp->dyn_error = NO_QUORUM_ACHIEVED;

@@ -275,7 +275,7 @@ dnode_peer_ack_err(struct context *ctx, struct conn *conn, struct msg *req)
     // Create an appropriate response for the request so its propagated up;
     // This response gets dropped in rsp_make_error anyways. But since this is
     // an error path its ok with the overhead.
-    struct msg *rsp = msg_get(conn, false, __FUNCTION__);
+    struct msg *rsp = msg_get(conn, false, __FUNCTION__, RSP_ERROR);
     req->done = 1;
     rsp->peer = req;
     rsp->error = req->error = 1;
@@ -1252,7 +1252,7 @@ dnode_rsp_forward(struct context *ctx, struct conn *peer_conn, struct msg *rsp)
         req->done = 1;
 
         // Create an appropriate response for the request so its propagated up;
-        struct msg *err_rsp = msg_get(peer_conn, false, __FUNCTION__);
+        struct msg *err_rsp = msg_get(peer_conn, false, __FUNCTION__, RSP_LOCAL_PEER);
         err_rsp->error = req->error = 1;
         err_rsp->err = req->err = BAD_FORMAT;
         err_rsp->dyn_error = req->dyn_error = BAD_FORMAT;
@@ -1595,7 +1595,7 @@ dnode_peer_req_forward(struct context *ctx,
         }
 
         // All other cases return a response
-        struct msg *rsp = msg_get(c_conn, false, __FUNCTION__);
+        struct msg *rsp = msg_get(c_conn, false, __FUNCTION__, RSP_LOCAL_PEER);
         msg->done = 1;
         rsp->error = msg->error = 1;
         rsp->dyn_error = msg->dyn_error = rsp->err = msg->err = (p_conn ?
@@ -1606,8 +1606,6 @@ dnode_peer_req_forward(struct context *ctx,
         log_info("%lu:%lu <-> %lu:%lu Short circuit....", msg->id, msg->parent_id,
                  rsp->id, rsp->parent_id);
         forward_response_upstream(c_conn, msg, rsp);
-        if (msg->swallow)
-            msg_put(msg);
         return;
     }
 

@@ -32,7 +32,13 @@ req_get(struct conn *conn)
     ASSERT((conn->p.type == CONN_CLIENT) ||
            (conn->p.type == CONN_DNODE_PEER_CLIENT));
 
-    msg = msg_get(conn, true, __FUNCTION__);
+    msg_category_t category = REQ_CLIENT;
+    if (conn->p.type ==  CONN_DNODE_PEER_CLIENT) {
+        category = REQ_LOCAL_PEER;
+        if (!conn->same_dc)
+            category = REQ_REMOTE_PEER;
+    }
+    msg = msg_get(conn, true, __FUNCTION__, category);
     if (msg == NULL) {
         conn->err = errno;
     }

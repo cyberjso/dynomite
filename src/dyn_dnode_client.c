@@ -267,7 +267,7 @@ dnode_req_forward(struct context *ctx, struct conn *conn, struct msg *msg)
             if (string_compare(rack->name, &pool->rack_name) == 0 ) {
                 rack_msg = msg;
             } else {
-                rack_msg = msg_get(conn, msg->request, __FUNCTION__);
+                rack_msg = msg_get(conn, msg->request, __FUNCTION__, REQ_LOCAL_PEER);
                 if (rack_msg == NULL) {
                     log_debug(LOG_VERB, "whelp, looks like yer screwed now, buddy. no inter-rack messages for you!");
                     continue;

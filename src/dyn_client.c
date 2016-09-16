@@ -602,7 +602,7 @@ req_forward_all_local_racks(struct context *ctx, struct conn *c_conn,
         if (string_compare(rack->name, &pool->rack_name) == 0 ) {
             rack_msg = msg;
         } else {
-            rack_msg = msg_get(c_conn, msg->request, __FUNCTION__);
+            rack_msg = msg_get(c_conn, msg->request, __FUNCTION__, REQ_LOCAL_PEER);
             if (rack_msg == NULL) {
                 log_error("whelp, looks like yer screwed "
                           "now, buddy. no inter-rack messages for you!");
@@ -660,7 +660,7 @@ req_forward_remote_dc(struct context *ctx, struct conn *c_conn, struct msg *msg,
     if (rack == NULL)
         rack = array_get(&dc->racks, 0);
 
-    struct msg *rack_msg = msg_get(c_conn, msg->request, __FUNCTION__);
+    struct msg *rack_msg = msg_get(c_conn, msg->request, __FUNCTION__, REQ_REMOTE_PEER);
     if (rack_msg == NULL) {
         log_debug(LOG_VERB, "whelp, looks like yer screwed now, buddy. no inter-rack messages for you!");
         msg_put(rack_msg);
@@ -669,8 +669,6 @@ req_forward_remote_dc(struct context *ctx, struct conn *c_conn, struct msg *msg,
 
     msg_clone(msg, orig_mbuf, rack_msg);
     log_info("msg (%d:%d) clone to remote rack msg (%d:%d)",
-             msg->id, msg->parent_id, rack_msg->id, rack_msg->parent_id);
-    log_info("msg (%lu:%lu) clone to rack msg (%lu:%lu) for remote dc",
              msg->id, msg->parent_id, rack_msg->id, rack_msg->parent_id);
     rack_msg->swallow = true;
 
@@ -720,7 +718,7 @@ req_forward(struct context *ctx, struct conn *c_conn, struct msg *msg)
     log_debug(LOG_DEBUG, "conn %p adding message %d:%d", c_conn, msg->id, msg->parent_id);
     dictAdd(c_conn->outstanding_msgs_dict, &msg->id, msg);
 
-    // extract key for msg, either using the hash_tag what the parser got
+    // extract key for msg, either using the hash_tag or what the parser got
     uint8_t *key = NULL;
     uint32_t keylen = 0;
     key = g_msg_get_key(msg, &pool->topo->hash_tag, &keylen);

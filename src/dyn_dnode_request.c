@@ -64,7 +64,7 @@ void
 dnode_peer_gossip_forward(struct context *ctx, struct conn *conn, struct mbuf *data_buf)
 {
     rstatus_t status;
-    struct msg *msg = msg_get(conn, 1, __FUNCTION__);
+    struct msg *msg = msg_get(conn, 1, __FUNCTION__, MSG_MISC);
 
     if (msg == NULL) {
         log_debug(LOG_DEBUG, "Unable to obtain a msg");
