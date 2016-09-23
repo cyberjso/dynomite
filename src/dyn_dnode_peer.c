@@ -1215,6 +1215,7 @@ dnode_rsp_forward(struct context *ctx, struct conn *peer_conn, struct msg *rsp)
             // We received a response from the past. This indeed proves out of order
             // responses. A blunder to the architecture. Log it and drop the response.
             log_error("MISMATCH: received response from the past. Dropping it");
+            rsp->category = peer_conn->same_dc ? RSP_LOCAL_PEER : RSP_REMOTE_PEER;
             rsp_put(rsp);
             return;
         }
